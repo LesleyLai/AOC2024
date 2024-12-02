@@ -36,7 +36,7 @@ fn part1(input: &str) -> i32 {
 }
 
 fn part2(input: &str) -> i32 {
-    let (mut list1, mut list2) = parse_input(input);
+    let (list1, list2) = parse_input(input);
 
     let mut occurrence_counts = HashMap::new();
     for num in list2 {
