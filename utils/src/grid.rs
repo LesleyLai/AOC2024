@@ -1,8 +1,7 @@
 #![allow(dead_code)]
 
+use crate::vec2::Vec2;
 use std::mem::swap;
-
-type Point = (isize, isize);
 
 #[derive(Eq, PartialEq, Clone, Hash)]
 pub struct Grid<T> {
@@ -12,8 +11,8 @@ pub struct Grid<T> {
 }
 
 impl<T> Grid<T> {
-    fn is_out_of_bound(self: &Self, (x, y): Point) -> bool {
-        x < 0 || x >= self.width || y < 0 || y >= self.height
+    fn is_out_of_bound(self: &Self, pos: Vec2) -> bool {
+        pos.x < 0 || pos.x >= self.width || pos.y < 0 || pos.y >= self.height
     }
 
     /// Flip rows
@@ -38,19 +37,19 @@ impl<T> Grid<T> {
         swap(&mut self.width, &mut self.height);
     }
 
-    pub fn get(&self, (x, y): Point) -> Option<&T> {
-        if self.is_out_of_bound((x, y)) {
+    pub fn get(&self, pos: Vec2) -> Option<&T> {
+        if self.is_out_of_bound(pos) {
             None
         } else {
-            Some(&self.data[(y * self.width + x) as usize])
+            Some(&self.data[(pos.y * self.width + pos.x) as usize])
         }
     }
 
-    pub fn get_mut(&mut self, (x, y): Point) -> Option<&mut T> {
-        if self.is_out_of_bound((x, y)) {
+    pub fn get_mut(&mut self, pos: Vec2) -> Option<&mut T> {
+        if self.is_out_of_bound(pos) {
             None
         } else {
-            Some(&mut self.data[(y * self.width + x) as usize])
+            Some(&mut self.data[(pos.y * self.width + pos.x) as usize])
         }
     }
 
@@ -90,16 +89,16 @@ impl<T: Clone + Default> Grid<T> {
     }
 }
 
-impl<T> std::ops::Index<Point> for Grid<T> {
+impl<T> std::ops::Index<Vec2> for Grid<T> {
     type Output = T;
 
-    fn index(&self, point: Point) -> &Self::Output {
+    fn index(&self, point: Vec2) -> &Self::Output {
         self.get(point).unwrap()
     }
 }
 
-impl<T> std::ops::IndexMut<Point> for Grid<T> {
-    fn index_mut(&mut self, point: Point) -> &mut Self::Output {
+impl<T> std::ops::IndexMut<Vec2> for Grid<T> {
+    fn index_mut(&mut self, point: Vec2) -> &mut Self::Output {
         self.get_mut(point).unwrap()
     }
 }
@@ -156,3 +155,14 @@ impl<'a, T> Iterator for GridColIter<'a, T> {
         self.next()
     }
 }
+
+pub const ALL_EIGHT_DIRECTIONS: &'static [Vec2] = &[
+    Vec2::new(-1, -1),
+    Vec2::new(-1, 0),
+    Vec2::new(-1, 1),
+    Vec2::new(0, -1),
+    Vec2::new(0, 1),
+    Vec2::new(1, -1),
+    Vec2::new(1, 0),
+    Vec2::new(1, 1),
+];
