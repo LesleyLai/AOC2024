@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
 const TEST_INPUT: &str = "47|53
@@ -31,6 +32,38 @@ const TEST_INPUT: &str = "47|53
 
 const INPUT: &str = include_str!("input.txt");
 
+type RuleGraph = HashMap<isize, HashSet<isize>>;
+type Update = Vec<isize>;
+
+fn parse(input: &str) -> (RuleGraph, Vec<Update>) {
+    let mut lines = input.lines();
+
+    let mut rule_graph = HashMap::new(); // key|value
+    loop {
+        let line = lines.next().unwrap();
+        if line.len() == 0 {
+            break;
+        }
+        let (first, second) = line.split_once('|').unwrap();
+        let (first, second): (isize, isize) = (first.parse().unwrap(), second.parse().unwrap());
+
+        rule_graph
+            .entry(first)
+            .or_insert(HashSet::new())
+            .insert(second);
+    }
+
+    let updates = lines
+        .map(|line| {
+            line.split(",")
+                .map(|s| s.parse().unwrap())
+                .collect::<Vec<isize>>()
+        })
+        .collect();
+
+    (rule_graph, updates)
+}
+
 fn is_valid(update: &[isize], rule_graph: &HashMap<isize, HashSet<isize>>) -> bool {
     for (i, x) in update.iter().enumerate() {
         for y in update[i + 1..].iter() {
@@ -42,74 +75,32 @@ fn is_valid(update: &[isize], rule_graph: &HashMap<isize, HashSet<isize>>) -> bo
     true
 }
 
-fn part1(input: &str) -> isize {
-    let mut lines = input.lines();
-
-    let mut rule_graph = HashMap::new(); // key|value
-    loop {
-        let line = lines.next().unwrap();
-        if line.len() == 0 {
-            break;
+fn sort_by_graph(update: &mut [isize], rule_graph: &RuleGraph) {
+    update.sort_by(|x, y| {
+        if rule_graph.get(&y).is_some_and(|set| set.contains(&x)) {
+            Ordering::Less
+        } else if rule_graph.get(&x).is_some_and(|set| set.contains(&y)) {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
         }
-        let (first, second) = line.split_once('|').unwrap();
-        let (first, second): (isize, isize) = (first.parse().unwrap(), second.parse().unwrap());
-
-        rule_graph
-            .entry(first)
-            .or_insert(HashSet::new())
-            .insert(second);
-    }
-
-    let mut updates = vec![];
-    for line in lines {
-        let update: Vec<isize> = line.split(",").map(|s| s.parse().unwrap()).collect();
-        updates.push(update);
-    }
-
-    let mut sum = 0;
-    for update in updates {
-        if is_valid(&update, &rule_graph) {
-            sum += update[update.len() / 2]
-        }
-    }
-    sum
+    });
 }
 
-fn part2(input: &str) -> isize {
-    let mut lines = input.lines();
+fn part1(rule_graph: &RuleGraph, updates: &[Update]) -> isize {
+    updates
+        .iter()
+        .filter(|update| is_valid(&update, &rule_graph))
+        .map(|update| update[update.len() / 2])
+        .sum()
+}
 
-    let mut rule_graph = HashMap::new(); // key|value
-    loop {
-        let line = lines.next().unwrap();
-        if line.len() == 0 {
-            break;
-        }
-        let (first, second) = line.split_once('|').unwrap();
-        let (first, second): (isize, isize) = (first.parse().unwrap(), second.parse().unwrap());
-
-        rule_graph
-            .entry(first)
-            .or_insert(HashSet::new())
-            .insert(second);
-    }
-
+fn part2(rule_graph: &RuleGraph, updates: &[Update]) -> isize {
     let mut sum = 0;
-    for line in lines {
-        let mut update: Vec<isize> = line.split(",").map(|s| s.parse().unwrap()).collect();
-
-        let valid = is_valid(&update, &rule_graph);
-
-        if !valid {
-            for i in 0..update.len() {
-                for j in i + 1..update.len() {
-                    let x = update[i];
-                    let y = update[j];
-                    if rule_graph.get(&y).is_some_and(|set| set.contains(&x)) {
-                        (update[i], update[j]) = (y, x);
-                    }
-                }
-            }
-
+    for update in updates {
+        if !is_valid(&update, &rule_graph) {
+            let mut update = update.clone();
+            sort_by_graph(&mut update, &rule_graph);
             sum += update[update.len() / 2]
         }
     }
@@ -117,9 +108,12 @@ fn part2(input: &str) -> isize {
 }
 
 fn main() {
-    assert_eq!(part1(TEST_INPUT), 143);
-    assert_eq!(part1(INPUT), 4957);
+    let (test_rules, test_updates) = parse(TEST_INPUT);
+    let (rules, updates) = parse(INPUT);
 
-    assert_eq!(part2(TEST_INPUT), 123);
-    assert_eq!(part2(INPUT), 6938);
+    assert_eq!(part1(&test_rules, &test_updates), 143);
+    assert_eq!(part1(&rules, &updates), 4957);
+
+    assert_eq!(part2(&test_rules, &test_updates), 123);
+    assert_eq!(part2(&rules, &updates), 6938);
 }
