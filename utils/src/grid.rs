@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use crate::two_dimension_iter;
 use crate::vec2::Vec2;
+use crate::{two_dimension_iter, Bound};
 use std::mem::swap;
 
 #[derive(Eq, PartialEq, Clone, Hash)]
@@ -47,7 +47,8 @@ impl<T> Grid<T> {
         }
     }
 
-    pub fn get_mut(&mut self, pos: Vec2) -> Option<&mut T> {
+    pub fn get_mut(&mut self, pos: impl Into<Vec2>) -> Option<&mut T> {
+        let pos = pos.into();
         if self.is_out_of_bound(pos) {
             None
         } else {
@@ -111,6 +112,10 @@ impl<T: Clone + Default> Grid<T> {
             data,
         }
     }
+
+    pub fn bound(&self) -> Bound {
+        Bound::new(Vec2::new(0, 0), Vec2::new(self.width, self.height))
+    }
 }
 
 impl Grid<u8> {
@@ -120,17 +125,17 @@ impl Grid<u8> {
     }
 }
 
-impl<T> std::ops::Index<Vec2> for Grid<T> {
+impl<T, Coord: Into<Vec2>> std::ops::Index<Coord> for Grid<T> {
     type Output = T;
 
-    fn index(&self, point: Vec2) -> &Self::Output {
-        self.get(point).unwrap()
+    fn index(&self, coord: Coord) -> &Self::Output {
+        self.get(coord).unwrap()
     }
 }
 
-impl<T> std::ops::IndexMut<Vec2> for Grid<T> {
-    fn index_mut(&mut self, point: Vec2) -> &mut Self::Output {
-        self.get_mut(point).unwrap()
+impl<T, Coord: Into<Vec2>> std::ops::IndexMut<Coord> for Grid<T> {
+    fn index_mut(&mut self, coord: Coord) -> &mut Self::Output {
+        self.get_mut(coord).unwrap()
     }
 }
 
@@ -235,14 +240,3 @@ impl<'a, T> Iterator for GridEnumerateIter<'a, T> {
         })
     }
 }
-
-pub const ALL_EIGHT_DIRECTIONS: &'static [Vec2] = &[
-    Vec2::new(-1, -1),
-    Vec2::new(-1, 0),
-    Vec2::new(-1, 1),
-    Vec2::new(0, -1),
-    Vec2::new(0, 1),
-    Vec2::new(1, -1),
-    Vec2::new(1, 0),
-    Vec2::new(1, 1),
-];

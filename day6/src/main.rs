@@ -1,4 +1,4 @@
-use utils::{two_dimension_iter, Direction4, Grid, Vec2};
+use utils::{Direction4, Grid, Vec2};
 
 const TEST_INPUT: &str = "....#.....
 .........#
@@ -34,7 +34,7 @@ fn part1(input: &str) -> usize {
     while grid.get(current).is_some() {
         direction = turn_right_until_not_facing_wall(&grid, current, direction);
         grid[current] = b'X';
-        current = current + Vec2::from(direction);
+        current += direction.into();
     }
 
     grid.iter().filter(|&&c| c == b'X').count()
@@ -46,7 +46,7 @@ fn in_a_loop(grid: &mut Grid<u8>, start: Vec2) -> bool {
 
     // Use 0 rather than '.' to represent empty spots
     grid[start] = 0;
-    for coord in two_dimension_iter(grid.width, grid.height) {
+    for coord in grid.bound().iter() {
         if grid.get(coord) == Some(&b'.') {
             grid[coord] = 0;
         }
@@ -71,7 +71,7 @@ fn in_a_loop(grid: &mut Grid<u8>, start: Vec2) -> bool {
 
         grid[current] += direction_to_bit(direction);
 
-        current = current + Vec2::from(direction);
+        current += direction.into();
     }
 
     false

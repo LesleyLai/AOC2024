@@ -11,17 +11,18 @@ MXMXAXMASX";
 
 const INPUT: &str = include_str!("input.txt");
 
-use utils::{two_dimension_iter, Grid, Vec2, ALL_EIGHT_DIRECTIONS};
+use utils::{two_dimension_iter, Direction8, Grid, Vec2};
 
 fn part1(grid: &Grid<u8>) -> usize {
-    two_dimension_iter(grid.width, grid.height)
+    grid.bound()
+        .iter()
         .map(|pos| match grid.get(pos) {
-            Some(b'X') => ALL_EIGHT_DIRECTIONS
+            Some(b'X') => Direction8::all_directions()
                 .iter()
                 .filter(|&&dir| {
-                    matches!(grid.get(pos + dir), Some(b'M'))
-                        && matches!(grid.get(pos + dir * 2), Some(b'A'))
-                        && matches!(grid.get(pos + dir * 3), Some(b'S'))
+                    matches!(grid.get(pos + Vec2::from(dir)), Some(b'M'))
+                        && matches!(grid.get(pos + Vec2::from(dir) * 2), Some(b'A'))
+                        && matches!(grid.get(pos + Vec2::from(dir) * 3), Some(b'S'))
                 })
                 .count(),
             _ => 0,
