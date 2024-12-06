@@ -11,7 +11,7 @@ pub struct Grid<T> {
 }
 
 impl<T> Grid<T> {
-    fn is_out_of_bound(self: &Self, pos: Vec2) -> bool {
+    pub fn is_out_of_bound(self: &Self, pos: Vec2) -> bool {
         pos.x < 0 || pos.x >= self.width || pos.y < 0 || pos.y >= self.height
     }
 
