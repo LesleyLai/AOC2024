@@ -1,4 +1,4 @@
-use utils::{Grid, Vec2};
+use utils::{two_dimension_iter, Direction4, Grid, Vec2};
 
 const TEST_INPUT: &str = "....#.....
 .........#
@@ -10,144 +10,85 @@ const TEST_INPUT: &str = "....#.....
 ........#.
 #.........
 ......#...";
+
 const INPUT: &str = include_str!("./input.txt");
 
-fn parse(input: &str) -> Grid<u8> {
-    let nested: Vec<_> = input.lines().map(|line| line.as_bytes().to_vec()).collect();
-    Grid::from_nested(&nested)
-}
-
-// fn print_grid(grid: &Grid<u8>) {
-//     for y in 0..grid.height {
-//         for x in 0..grid.width {
-//             print!("{}", grid[Vec2::new(x, y)] as char);
-//         }
-//         println!();
-//     }
-// }
-
-fn turn_right(direction: Vec2) -> Vec2 {
-    match direction {
-        Vec2 { x: 0, y: -1 } => Vec2::new(1, 0),
-        Vec2 { x: 1, y: 0 } => Vec2::new(0, 1),
-        Vec2 { x: 0, y: 1 } => Vec2::new(-1, 0),
-        Vec2 { x: -1, y: 0 } => Vec2::new(0, -1),
-        _ => panic!("Invalid direction"),
+fn turn_right_until_not_facing_wall(
+    grid: &Grid<u8>,
+    pos: Vec2,
+    mut direction: Direction4,
+) -> Direction4 {
+    while grid.get(pos + Vec2::from(direction)) == Some(&b'#') {
+        direction = direction.turn_right();
     }
+    direction
 }
 
 fn part1(input: &str) -> usize {
-    let mut grid = parse(&input);
+    let mut grid = Grid::from_text(&input);
 
-    let mut current = Vec2::new(0, 0);
-    'outer: for y in 0..grid.height {
-        for x in 0..grid.width {
-            match grid[Vec2::new(x, y)] {
-                b'^' => {
-                    current = Vec2::new(x, y);
-                    break 'outer;
-                }
-                _ => {}
-            }
-        }
-    }
+    let mut current = grid.find(&b'^').unwrap();
     grid[current] = b'x';
 
-    let mut direction = Vec2::new(0, -1);
+    let mut direction = Direction4::Up;
     while grid.get(current).is_some() {
-        while grid.get(current + direction) == Some(&b'#') {
-            direction = turn_right(direction);
-        }
+        direction = turn_right_until_not_facing_wall(&grid, current, direction);
         grid[current] = b'X';
-
-        current = current + direction;
+        current = current + Vec2::from(direction);
     }
 
-    let mut distinct_positions = 0;
-    for y in 0..grid.height {
-        for x in 0..grid.width {
-            if grid[Vec2::new(x, y)] == b'X' {
-                distinct_positions += 1;
-            }
-        }
-    }
-
-    distinct_positions
+    grid.iter().filter(|&&c| c == b'X').count()
 }
 
-fn in_a_loop(grid: &Grid<u8>, start: Vec2) -> bool {
-    let mut direction = Vec2::new(0, -1);
-
+fn in_a_loop(grid: &mut Grid<u8>, start: Vec2) -> bool {
     let mut current = start;
+    let mut direction = Direction4::Up;
 
-    let mut trace_grid: Grid<u8> = Grid::new(grid.width, grid.height);
+    // Use 0 rather than '.' to represent empty spots
+    grid[start] = 0;
+    for coord in two_dimension_iter(grid.width, grid.height) {
+        if grid.get(coord) == Some(&b'.') {
+            grid[coord] = 0;
+        }
+    }
+
+    let direction_to_bit = |direction: Direction4| match direction {
+        Direction4::Up => 0b1,
+        Direction4::Right => 0b10,
+        Direction4::Down => 0b100,
+        Direction4::Left => 0b1000,
+    };
 
     while !grid.is_out_of_bound(current) {
-        while grid.get(current + direction) == Some(&b'#') {
-            direction = turn_right(direction);
-        }
+        direction = turn_right_until_not_facing_wall(&grid, current, direction);
 
-        // Repeat
-        if trace_grid[current] & 0b1 != 0 && direction == Vec2::new(0, -1) {
-            return true;
-        }
-        if trace_grid[current] & 0b10 != 0 && direction == Vec2::new(1, 0) {
-            return true;
-        }
-        if trace_grid[current] & 0b100 != 0 && direction == Vec2::new(0, 1) {
-            return true;
-        }
-        if trace_grid[current] & 0b1000 != 0 && direction == Vec2::new(-1, 0) {
+        if Direction4::all_directions()
+            .iter()
+            .any(|&dir| grid[current] & direction_to_bit(dir) != 0 && direction == dir)
+        {
             return true;
         }
 
-        trace_grid[current] += match direction {
-            Vec2 { x: 0, y: -1 } => 0b1,
-            Vec2 { x: 1, y: 0 } => 0b10,
-            Vec2 { x: 0, y: 1 } => 0b100,
-            Vec2 { x: -1, y: 0 } => 0b1000,
-            _ => panic!("Invalid direction"),
-        };
+        grid[current] += direction_to_bit(direction);
 
-        current = current + direction;
+        current = current + Vec2::from(direction);
     }
 
     false
 }
 
 fn part2(input: &str) -> usize {
-    let grid = parse(&input);
+    let grid = Grid::from_text(&input);
+    let start = grid.find(&b'^').unwrap();
 
-    let mut start = Vec2::new(0, 0);
-    'outer: for y in 0..grid.height {
-        for x in 0..grid.width {
-            match grid[Vec2::new(x, y)] {
-                b'^' => {
-                    start = Vec2::new(x, y);
-                    break 'outer;
-                }
-                _ => {}
-            }
-        }
-    }
-
-    let start = start;
-
-    let mut position_count = 0;
-    for x in 0..grid.width {
-        for y in 0..grid.height {
-            let location = Vec2::new(x, y);
-            if grid[location] == b'.' {
-                let mut modified_grid = grid.clone();
-                modified_grid[location] = b'#';
-                if in_a_loop(&modified_grid, start) {
-                    position_count += 1;
-                }
-            }
-        }
-    }
-
-    position_count
+    grid.enumerate()
+        .filter_map(|(coord, &content)| (content == b'.').then(|| coord))
+        .filter(|&coord| {
+            let mut modified_grid = grid.clone();
+            modified_grid[coord] = b'#';
+            in_a_loop(&mut modified_grid, start)
+        })
+        .count()
 }
 
 fn main() {

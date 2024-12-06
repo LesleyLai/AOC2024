@@ -13,11 +13,6 @@ const INPUT: &str = include_str!("input.txt");
 
 use utils::{two_dimension_iter, Grid, Vec2, ALL_EIGHT_DIRECTIONS};
 
-fn parse(input: &str) -> Grid<u8> {
-    let nested: Vec<_> = input.lines().map(|line| line.as_bytes().to_vec()).collect();
-    Grid::from_nested(&nested)
-}
-
 fn part1(grid: &Grid<u8>) -> usize {
     two_dimension_iter(grid.width, grid.height)
         .map(|pos| match grid.get(pos) {
@@ -56,8 +51,8 @@ fn part2(grid: &Grid<u8>) -> usize {
 }
 
 fn main() {
-    let test_grid = parse(&TEST_INPUT);
-    let grid = parse(&INPUT);
+    let test_grid = Grid::from_text(&TEST_INPUT);
+    let grid = Grid::from_text(&INPUT);
 
     assert_eq!(part1(&test_grid), 18);
     assert_eq!(part1(&grid), 2543);

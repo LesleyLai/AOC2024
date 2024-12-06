@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use crate::two_dimension_iter;
 use crate::vec2::Vec2;
 use std::mem::swap;
 
@@ -37,7 +38,8 @@ impl<T> Grid<T> {
         swap(&mut self.width, &mut self.height);
     }
 
-    pub fn get(&self, pos: Vec2) -> Option<&T> {
+    pub fn get(&self, pos: impl Into<Vec2>) -> Option<&T> {
+        let pos = pos.into();
         if self.is_out_of_bound(pos) {
             None
         } else {
@@ -59,6 +61,28 @@ impl<T> Grid<T> {
 
     pub fn columns(self: &Self) -> GridColIter<T> {
         GridColIter { grid: self, x: 0 }
+    }
+
+    pub fn iter(self: &Self) -> GridIter<T> {
+        GridIter {
+            grid: self,
+            x: 0,
+            y: 0,
+        }
+    }
+
+    pub fn enumerate(self: &Self) -> GridEnumerateIter<T> {
+        GridEnumerateIter {
+            grid: self,
+            x: 0,
+            y: 0,
+        }
+    }
+}
+
+impl<T: PartialEq> Grid<T> {
+    pub fn find(self: &Self, elem: &T) -> Option<Vec2> {
+        two_dimension_iter(self.width, self.height).find(|coord| self[*coord] == *elem)
     }
 }
 
@@ -86,6 +110,13 @@ impl<T: Clone + Default> Grid<T> {
             height: height as isize,
             data,
         }
+    }
+}
+
+impl Grid<u8> {
+    pub fn from_text(text: &str) -> Grid<u8> {
+        let nested: Vec<_> = text.lines().map(|line| line.as_bytes().to_vec()).collect();
+        Grid::from_nested(&nested)
     }
 }
 
@@ -153,6 +184,55 @@ impl<'a, T> Iterator for GridColIter<'a, T> {
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         self.x += n as isize;
         self.next()
+    }
+}
+
+pub struct GridIter<'a, T> {
+    grid: &'a Grid<T>,
+    x: isize,
+    y: isize,
+}
+
+impl<'a, T> Iterator for crate::GridIter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let res = self.grid.get((self.x, self.y));
+        res.map(|item| {
+            if self.x + 1 >= self.grid.width {
+                self.x = 0;
+                self.y += 1;
+            } else {
+                self.x += 1;
+            }
+
+            item
+        })
+    }
+}
+
+pub struct GridEnumerateIter<'a, T> {
+    grid: &'a Grid<T>,
+    x: isize,
+    y: isize,
+}
+
+impl<'a, T> Iterator for GridEnumerateIter<'a, T> {
+    type Item = (Vec2, &'a T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let res = self.grid.get((self.x, self.y));
+        let coord = (self.x, self.y).into();
+        res.map(|item| {
+            if self.x + 1 >= self.grid.width {
+                self.x = 0;
+                self.y += 1;
+            } else {
+                self.x += 1;
+            }
+
+            (coord, item)
+        })
     }
 }
 

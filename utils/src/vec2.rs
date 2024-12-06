@@ -1,4 +1,4 @@
-use std::ops::{Add, Mul};
+use std::ops::{Add, Mul, Sub};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Vec2 {
@@ -12,6 +12,18 @@ impl Vec2 {
     }
 }
 
+impl From<(isize, isize)> for Vec2 {
+    fn from((x, y): (isize, isize)) -> Self {
+        Vec2::new(x, y)
+    }
+}
+
+impl From<Vec2> for (isize, isize) {
+    fn from(point: Vec2) -> Self {
+        (point.x, point.y)
+    }
+}
+
 impl Add for Vec2 {
     type Output = Self;
 
@@ -20,6 +32,14 @@ impl Add for Vec2 {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
         }
+    }
+}
+
+impl Sub for Vec2 {
+    type Output = Vec2;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        (self.x - rhs.x, self.y - rhs.y).into()
     }
 }
 
