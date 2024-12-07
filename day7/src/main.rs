@@ -28,71 +28,58 @@ fn parse_equation(line: &str) -> Equation {
     Equation { answer, numbers }
 }
 
-fn search(answer: isize, numbers: &[isize]) -> bool {
-    search_impl(answer, numbers[0], &numbers[1..])
-}
-
-fn search_impl(answer: isize, acc: isize, remaining: &[isize]) -> bool {
-    if remaining.len() == 0 {
-        return answer == acc;
-    }
-
-    search_impl(answer, acc + remaining[0], &remaining[1..])
-        || search_impl(answer, acc * remaining[0], &remaining[1..])
-}
-
-fn part1(input: &str) -> isize {
-    let equations: Vec<_> = input.lines().map(parse_equation).collect();
-
-    let mut result = 0;
-    for equation in &equations {
-        let find_path = search(equation.answer, &equation.numbers);
-        if find_path {
-            result += equation.answer;
-        }
-    }
-
-    result
-}
-
 fn concat(first: isize, second: isize) -> isize {
     (first.to_string() + second.to_string().as_str())
         .parse()
         .unwrap()
 }
 
-fn search2(answer: isize, numbers: &[isize]) -> bool {
-    search2_impl(answer, numbers[0], &numbers[1..])
-}
+fn search(answer: isize, numbers: &[isize], is_part2: bool) -> bool {
+    let mut stack = vec![(numbers[0], &numbers[1..])];
 
-fn search2_impl(answer: isize, acc: isize, remaining: &[isize]) -> bool {
-    if remaining.len() == 0 {
-        return answer == acc;
-    }
-
-    search2_impl(answer, acc + remaining[0], &remaining[1..])
-        || search2_impl(answer, acc * remaining[0], &remaining[1..])
-        || search2_impl(answer, concat(acc, remaining[0]), &remaining[1..])
-}
-
-fn part2(input: &str) -> isize {
-    let equations: Vec<_> = input.lines().map(parse_equation).collect();
-
-    let mut result = 0;
-    for equation in &equations {
-        let find_path = search2(equation.answer, &equation.numbers);
-        if find_path {
-            result += equation.answer;
+    while let Some((acc, remaining)) = stack.pop() {
+        match &remaining {
+            &[] => {
+                if acc == answer {
+                    return true;
+                }
+            }
+            &[head, tail @ ..] => {
+                stack.push((acc + head, tail));
+                stack.push((acc * head, tail));
+                if is_part2 {
+                    stack.push((concat(acc, *head), tail));
+                }
+            }
         }
     }
 
-    result
+    false
+}
+
+fn solve(equations: &[Equation], is_part2: bool) -> isize {
+    equations
+        .iter()
+        .filter(|equation| search(equation.answer, &equation.numbers, is_part2))
+        .map(|eq| eq.answer)
+        .sum()
+}
+
+fn part1(equations: &[Equation]) -> isize {
+    solve(equations, false)
+}
+
+fn part2(equations: &[Equation]) -> isize {
+    solve(equations, true)
 }
 
 fn main() {
-    assert_eq!(part1(TEST_INPUT), 3749);
-    assert_eq!(part1(INPUT), 1399219271639);
+    let test_equations: Vec<_> = TEST_INPUT.lines().map(parse_equation).collect();
+    let equations: Vec<_> = INPUT.lines().map(parse_equation).collect();
 
-    assert_eq!(part2(TEST_INPUT), 11387);
-    assert_eq!(part2(INPUT), 275791737999003);
+    assert_eq!(part1(&test_equations), 3749);
+    assert_eq!(part1(&equations), 1399219271639);
+
+    assert_eq!(part2(&test_equations), 11387);
+    assert_eq!(part2(&equations), 275791737999003);
 }
