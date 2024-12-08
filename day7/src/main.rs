@@ -34,10 +34,15 @@ fn concat(first: isize, second: isize) -> isize {
         .unwrap()
 }
 
-fn search(answer: isize, numbers: &[isize], is_part2: bool) -> bool {
-    let mut stack = vec![(numbers[0], &numbers[1..])];
+fn search<const IS_PART2: bool>(answer: isize, numbers: &[isize]) -> bool {
+    let mut stack = Vec::with_capacity(100);
+    stack.push((numbers[0], &numbers[1..]));
 
     while let Some((acc, remaining)) = stack.pop() {
+        if acc > answer {
+            continue;
+        }
+
         match &remaining {
             &[] => {
                 if acc == answer {
@@ -47,7 +52,7 @@ fn search(answer: isize, numbers: &[isize], is_part2: bool) -> bool {
             &[head, tail @ ..] => {
                 stack.push((acc + head, tail));
                 stack.push((acc * head, tail));
-                if is_part2 {
+                if IS_PART2 {
                     stack.push((concat(acc, *head), tail));
                 }
             }
@@ -60,7 +65,13 @@ fn search(answer: isize, numbers: &[isize], is_part2: bool) -> bool {
 fn solve(equations: &[Equation], is_part2: bool) -> isize {
     equations
         .iter()
-        .filter(|equation| search(equation.answer, &equation.numbers, is_part2))
+        .filter(|equation| {
+            if is_part2 {
+                search::<true>(equation.answer, &equation.numbers)
+            } else {
+                search::<false>(equation.answer, &equation.numbers)
+            }
+        })
         .map(|eq| eq.answer)
         .sum()
 }
