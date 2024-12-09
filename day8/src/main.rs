@@ -76,11 +76,10 @@ fn part2(input: &str) -> usize {
 
     let mut antinode_grid = Grid::new(width, height);
 
-    let mut walk_and_fill = |start, dir| {
-        let mut current = start;
-        while let Some(slot) = antinode_grid.get_mut(current) {
+    let mut walk_and_fill = |mut coord, dir| {
+        while let Some(slot) = antinode_grid.get_mut(coord) {
             *slot = true;
-            current += dir;
+            coord += dir;
         }
     };
 
@@ -88,9 +87,7 @@ fn part2(input: &str) -> usize {
         for i in 0..coords.len() {
             for j in (i + 1)..coords.len() {
                 let (a, b) = (coords[i], coords[j]);
-                let dist = b - a;
-                let dir = Vec2::new(dist.x, dist.y);
-
+                let dir = b - a;
                 walk_and_fill(a, dir);
                 walk_and_fill(a, -dir);
             }
