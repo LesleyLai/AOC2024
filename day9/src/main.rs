@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::ops::Bound::{Excluded, Included};
 
 const TEST_INPUT: &str = "2333133121414131402";
 
@@ -25,8 +26,6 @@ fn part1(input: &str) -> usize {
         is_free = !is_free;
     }
 
-    //print_blocks(&blocks);
-
     for i in 0..blocks.len() {
         if blocks[i] == None {
             for j in ((i + 1)..blocks.len()).rev() {
@@ -50,117 +49,114 @@ fn part1(input: &str) -> usize {
     checksum
 }
 
-// fn print_spaces(spaces: &BTreeMap<usize, (u8, Option<usize>)>) {
-//     for (len, id) in spaces.values() {
-//         match *id {
-//             None => {
-//                 for _ in 0..*len {
-//                     print!(".");
-//                 }
-//             }
-//             Some(id) => {
-//                 assert!(id < 10);
-//                 for _ in 0..*len {
-//                     print!("{}", id);
-//                 }
-//             }
-//         }
-//     }
-//     println!();
-// }
+struct Chunk {
+    length: u8,
+    id: Option<u16>, // None for free block, and Some for a file
+}
 
-fn compute_checksum(spaces: &BTreeMap<usize, (u8, Option<usize>)>) -> usize {
+impl Chunk {
+    fn new_file(length: u8, id: u16) -> Chunk {
+        Chunk {
+            length,
+            id: Some(id),
+        }
+    }
+
+    fn new_free_space(length: u8) -> Chunk {
+        Chunk { length, id: None }
+    }
+}
+
+fn compute_checksum(chunks: &BTreeMap<usize, Chunk>) -> usize {
     let mut checksum = 0;
-    for (start, (length, id)) in spaces.iter() {
-        if let Some(id) = id {
-            for i in 0..*length {
+    for (start, block) in chunks.iter() {
+        if let Some(id) = block.id {
+            for i in 0..block.length {
                 let offset = start + (i as usize);
-                checksum += offset * id;
+                checksum += offset * (id as usize);
             }
         }
     }
     checksum
 }
 
-fn part2(input: &str) -> usize {
-    let mut spaces = BTreeMap::new();
+fn read_chunks(input: &str) -> BTreeMap<usize, Chunk> {
+    let mut chunks = BTreeMap::new();
 
-    let mut is_free = false;
-    let mut id: usize = 0;
     let mut current: usize = 0;
-    for c in input.as_bytes() {
-        let length: u8 = *c - b'0';
-        let id = if is_free {
-            id = id + 1;
-            None
+    for (i, &c) in input.as_bytes().iter().enumerate() {
+        let length = c - b'0';
+        if i % 2 != 0 {
+            chunks.insert(current, Chunk::new_free_space(length));
         } else {
-            Some(id)
+            chunks.insert(
+                current,
+                Chunk::new_file(length, u16::try_from(i / 2).unwrap()),
+            );
         };
-
-        spaces.insert(current, (length, id));
-
         current += length as usize;
-        is_free = !is_free;
     }
 
-    //print_spaces(&spaces);
+    chunks
+}
 
-    let mut last_id = usize::MAX;
+fn part2(input: &str) -> usize {
+    let mut chunks = read_chunks(input);
+
+    let mut last_start = usize::MAX;
+
+    let mut last_id = u16::MAX;
     loop {
         // Find the location of the next file to move
-        let mut to_move = None;
-        for (start, (_, id)) in spaces.iter().rev() {
-            if let Some(id) = id {
-                if *id < last_id {
-                    to_move = Some(start);
-                    last_id = *id;
-                    break;
-                }
-            }
-        }
+
+        let to_move_pair = chunks
+            // optimization to shrink the range of search
+            .range((Included(&0), Excluded(&last_start)))
+            .rev()
+            .find(|(_, chunk)| chunk.id.is_some_and(|id| id < last_id));
+
         // Nothing to move, we are done!
-        if to_move.is_none() {
+        if to_move_pair.is_none() {
             break;
         }
 
-        let to_move = *to_move.unwrap();
-        let (length, id) = spaces.get(&to_move).unwrap();
-        let length = *length;
-        let id = id.unwrap();
+        let (&to_move, to_move_chunk) = to_move_pair.unwrap();
+        let id = to_move_chunk.id.unwrap();
+        let length = to_move_chunk.length;
+        last_id = id;
+        last_start = to_move;
 
         // find free slot
-
         let mut free_slot = None;
-        for (free_start, (free_length, free_id)) in spaces.iter() {
+        for (free_start, free_block) in chunks.iter() {
             // Can't move to later place
             if *free_start >= to_move {
                 break;
             }
 
-            if free_id.is_none() {
-                if *free_length >= length {
-                    free_slot = Some(*free_start);
-                    break;
-                }
+            if free_block.id.is_none() && free_block.length >= length {
+                free_slot = Some(*free_start);
+                break;
             }
         }
 
         // move
         if let Some(free_start) = free_slot {
-            *spaces.get_mut(&to_move).unwrap() = (length, None);
+            *chunks.get_mut(&to_move).unwrap() = Chunk::new_free_space(length);
 
-            let (free_slot_size, _) = spaces.remove(&free_start).unwrap();
+            let free_slot_size = chunks.remove(&free_start).unwrap().length;
             assert!(free_slot_size >= length);
             let remaining = free_slot_size - length;
 
-            spaces.insert(free_start, (length, Some(id)));
+            chunks.insert(free_start, Chunk::new_file(length, id));
             if remaining > 0 {
-                spaces.insert(free_start + (length as usize), (remaining, None));
+                let remaining_start = free_start + (length as usize);
+                chunks.insert(remaining_start, Chunk::new_free_space(remaining));
             }
         }
     }
 
-    compute_checksum(&spaces)
+    compute_checksum(&chunks)
 }
 
 fn main() {
