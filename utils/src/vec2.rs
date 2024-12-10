@@ -1,6 +1,7 @@
+use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Vec2 {
     pub x: isize,
     pub y: isize,
@@ -76,6 +77,12 @@ impl Neg for Vec2 {
             x: -self.x,
             y: -self.y,
         }
+    }
+}
+
+impl Display for Vec2 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("({}, {})", self.x, self.y))
     }
 }
 
