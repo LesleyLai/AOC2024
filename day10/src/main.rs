@@ -16,48 +16,30 @@ const TEST_INPUT2: &str = "89010123
 
 const INPUT: &str = include_str!("./input.txt");
 
-fn push_next_locations(stack: &mut Vec<Vec2>, current: Vec2, grid: &Grid<u8>) {
-    for dir in Direction4::all_directions() {
-        let next = current + Vec2::from(dir);
-        if grid.get(next).is_some_and(|n| *n == grid[current] + 1) {
-            stack.push(next);
-        }
-    }
-}
-
-fn find_score(grid: &Grid<u8>, start: Vec2) -> usize {
+fn find_all_trails<const DEDUPLICATE_SAME_DEST: bool>(grid: &Grid<u8>, start: Vec2) -> usize {
     let mut stack = Vec::new();
+
     let mut visited = Grid::new(grid.width, grid.height);
 
     stack.push(start);
 
     let mut result = 0;
     while let Some(current) = stack.pop() {
-        if !matches!(visited.get(current), Some(false)) {
-            continue;
+        if DEDUPLICATE_SAME_DEST {
+            if !matches!(visited.get(current), Some(false)) {
+                continue;
+            }
+            visited[current] = true;
         }
-        visited[current] = true;
 
         if grid[current] == 9 {
             result += 1;
         } else {
-            push_next_locations(&mut stack, current, grid);
-        }
-    }
-
-    result
-}
-
-fn find_rating(grid: &Grid<u8>, start: Vec2) -> usize {
-    let mut stack = Vec::new();
-    stack.push(start);
-
-    let mut result = 0;
-    while let Some(current) = stack.pop() {
-        if grid[current] == 9 {
-            result += 1;
-        } else {
-            push_next_locations(&mut stack, current, grid);
+            Direction4::all_directions()
+                .iter()
+                .map(|&dir| current + Vec2::from(dir))
+                .filter(|&next| grid.get(next).is_some_and(|val| *val == grid[current] + 1))
+                .for_each(|next| stack.push(next))
         }
     }
 
@@ -72,27 +54,21 @@ fn parse(input: &str) -> Grid<u8> {
     Grid::from_nested(&nested)
 }
 
-fn solve<const IS_PART2: bool>(input: &str) -> usize {
+fn solve<const IS_PART1: bool>(input: &str) -> usize {
     let grid = parse(input);
 
     grid.enumerate()
         .filter(|(_, &height)| height == 0) // is trailhead
-        .map(|(coord, _)| {
-            if IS_PART2 {
-                find_rating(&grid, coord)
-            } else {
-                find_score(&grid, coord)
-            }
-        })
+        .map(|(coord, _)| find_all_trails::<IS_PART1>(&grid, coord))
         .sum()
 }
 
 fn part1(input: &str) -> usize {
-    solve::<false>(input)
+    solve::<true>(input)
 }
 
 fn part2(input: &str) -> usize {
-    solve::<true>(input)
+    solve::<false>(input)
 }
 
 fn main() {
