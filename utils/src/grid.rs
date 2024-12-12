@@ -96,6 +96,14 @@ impl<T: Clone + Default> Grid<T> {
         }
     }
 
+    pub fn with_value(width: isize, height: isize, value: T) -> Grid<T> {
+        Grid {
+            width,
+            height,
+            data: vec![value; (width * height) as usize].into_boxed_slice(),
+        }
+    }
+
     pub fn from_nested(input: &[Vec<T>]) -> Grid<T> {
         let width = input.first().unwrap().len();
         let height = input.len();

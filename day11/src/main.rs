@@ -6,66 +6,45 @@ const TEST_INPUT: &str = "125 17";
 
 const INPUT: &str = "1750884 193 866395 7 1158 31 35216 0";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct MemoKey {
-    stone: usize,
-    iteration_remaining: usize,
+fn split_if_even_digits(stone: usize) -> Option<(usize, usize)> {
+    let num_of_digits = count_digits(stone);
+    (num_of_digits % 2 == 0).then(|| split_by_digit(stone, num_of_digits / 2))
 }
 
-struct Memo {
-    table: HashMap<MemoKey, usize>,
-}
-
-impl Memo {
-    fn new() -> Self {
-        Self {
-            table: HashMap::new(),
-        }
+fn solve_impl(memo_table: &mut HashMap<usize, usize>, stone: usize, depth: usize) -> usize {
+    if depth == 0 {
+        return 1;
     }
 
-    fn solve(&mut self, stone: usize, iteration_remaining: usize) -> usize {
-        if iteration_remaining == 0 {
-            return 1;
-        }
-
-        let key = MemoKey {
-            stone,
-            iteration_remaining,
-        };
-
-        if let Some(&count) = self.table.get(&key) {
-            return count;
-        }
-
-        let result = {
-            if stone == 0 {
-                self.solve(1, iteration_remaining - 1)
-            } else {
-                let num_of_digits = count_digits(stone);
-                if num_of_digits % 2 == 0 {
-                    let (first, second) = split_by_digit(stone, num_of_digits / 2);
-                    self.solve(first, iteration_remaining - 1)
-                        + self.solve(second, iteration_remaining - 1)
-                } else {
-                    self.solve(stone * 2024, iteration_remaining - 1)
-                }
-            }
-        };
-
-        self.table.insert(key, result);
-
-        result
+    let key = stone << 8 | depth;
+    if let Some(&count) = memo_table.get(&key) {
+        return count;
     }
+
+    let result = {
+        if stone == 0 {
+            solve_impl(memo_table, 1, depth - 1)
+        } else if let Some((first, second)) = split_if_even_digits(stone) {
+            solve_impl(memo_table, first, depth - 1) + solve_impl(memo_table, second, depth - 1)
+        } else {
+            solve_impl(memo_table, stone * 2024, depth - 1)
+        }
+    };
+
+    memo_table.insert(key, result);
+
+    result
 }
 
-fn solve(input: &str, iteration_count: usize) -> usize {
+fn solve(input: &str, depth: usize) -> usize {
     let stones: Vec<usize> = input.split(" ").map(|s| s.parse().unwrap()).collect();
 
-    let mut memo = Memo::new();
+    assert!(depth < 256);
 
+    let mut memo = HashMap::new();
     stones
         .iter()
-        .map(|&stone| memo.solve(stone, iteration_count))
+        .map(|&stone| solve_impl(&mut memo, stone, depth))
         .sum()
 }
 
