@@ -87,13 +87,9 @@ impl<T: PartialEq> Grid<T> {
     }
 }
 
-impl<T: Clone + Default> Grid<T> {
-    pub fn new(width: isize, height: isize) -> Grid<T> {
-        Grid {
-            width,
-            height,
-            data: vec![Default::default(); (width * height) as usize].into_boxed_slice(),
-        }
+impl<T: Clone> Grid<T> {
+    pub fn fill(self: &mut Self, value: T) {
+        self.data.fill(value);
     }
 
     pub fn with_value(width: isize, height: isize, value: T) -> Grid<T> {
@@ -101,6 +97,16 @@ impl<T: Clone + Default> Grid<T> {
             width,
             height,
             data: vec![value; (width * height) as usize].into_boxed_slice(),
+        }
+    }
+}
+
+impl<T: Clone + Default> Grid<T> {
+    pub fn new(width: isize, height: isize) -> Grid<T> {
+        Grid {
+            width,
+            height,
+            data: vec![Default::default(); (width * height) as usize].into_boxed_slice(),
         }
     }
 

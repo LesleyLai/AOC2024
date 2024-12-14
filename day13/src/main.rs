@@ -50,6 +50,7 @@ impl<'a> Iterator for Parser<'a> {
 }
 
 fn solve(button_a: Vec2, button_b: Vec2, prize: Vec2) -> isize {
+    // Solve linear equation button_a * a + button_b * b = prize
     // Cramer's rule
     let det = button_a.x * button_b.y - button_b.x * button_a.y;
     let det_a = prize.x * button_b.y - button_b.x * prize.y;
@@ -59,7 +60,7 @@ fn solve(button_a: Vec2, button_b: Vec2, prize: Vec2) -> isize {
     let b = det_b / det;
 
     if button_a * a + button_b * b == prize {
-        (det_a / det) * 3 + (det_b / det)
+        a * 3 + b
     } else {
         0
     }
