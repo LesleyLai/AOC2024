@@ -34,16 +34,16 @@ fn parse_vec2(str: &str) -> Vec2 {
     Vec2::new(x.parse().unwrap(), y.parse().unwrap())
 }
 
+fn parse_line(line: &str) -> (Vec2, Vec2) {
+    let (position, velocity) = line.split_once(" ").unwrap();
+    (parse_vec2(position), parse_vec2(velocity))
+}
+
 fn part1(input: &str, width: isize, height: isize) -> isize {
-    let mut upper_left = 0;
-    let mut lower_left = 0;
-    let mut upper_right = 0;
-    let mut lower_right = 0;
+    let (mut upper_left, mut lower_left, mut upper_right, mut lower_right) = (0, 0, 0, 0);
 
     for line in input.lines() {
-        let (position, velocity) = line.split_once(" ").unwrap();
-        let mut position = parse_vec2(position);
-        let velocity = parse_vec2(velocity);
+        let (mut position, velocity) = parse_line(line);
 
         for _ in 0..100 {
             position = advance(position, velocity, width, height);
@@ -70,34 +70,17 @@ fn part1(input: &str, width: isize, height: isize) -> isize {
 fn advance(mut position: Vec2, velocity: Vec2, width: isize, height: isize) -> Vec2 {
     position += velocity;
 
-    while position.x >= width {
-        position.x -= width;
-    }
-    while position.x < 0 {
-        position.x += width;
-    }
-    while position.y >= height {
-        position.y -= height;
-    }
-    while position.y < 0 {
-        position.y += height;
-    }
+    // Wrap around if out of bound
+    position.x = position.x.rem_euclid(width);
+    position.y = position.y.rem_euclid(height);
 
     position
 }
 
 fn part2(input: &str, width: isize, height: isize) -> isize {
+    let (mut positions, velocities): (Vec<_>, Vec<_>) = input.lines().map(parse_line).unzip();
+
     let mut grid: Grid<u8> = Grid::new(width, height);
-
-    let mut positions = vec![];
-    let mut velocities = vec![];
-
-    for line in input.lines() {
-        let (position, velocity) = line.split_once(" ").unwrap();
-        positions.push(parse_vec2(position));
-        velocities.push(parse_vec2(velocity));
-    }
-
     for i in successors(Some(1), |i| Some(i + 1)) {
         for (position, &velocity) in positions.iter_mut().zip(velocities.iter()) {
             *position = advance(*position, velocity, width, height);
