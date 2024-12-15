@@ -16,18 +16,18 @@ p=9,5 v=-3,-3";
 
 const INPUT: &str = include_str!("./input.txt");
 
-// fn print_grid(grid: &Grid<isize>) {
-//     for row in grid.rows() {
-//         for &e in row {
-//             if e == 0 {
-//                 print!(".");
-//             } else {
-//                 print!("{}", e);
-//             }
-//         }
-//         println!();
-//     }
-// }
+fn print_grid(grid: &Grid<u8>) {
+    for row in grid.rows() {
+        for &e in row {
+            if e == 0 {
+                print!(".");
+            } else {
+                print!("{}", e);
+            }
+        }
+        println!();
+    }
+}
 
 fn parse_vec2(str: &str) -> Vec2 {
     let (x, y) = str.split_once("=").unwrap().1.split_once(",").unwrap();
@@ -42,9 +42,7 @@ fn parse_line(line: &str) -> (Vec2, Vec2) {
 fn part1(input: &str, width: isize, height: isize) -> isize {
     let (mut upper_left, mut lower_left, mut upper_right, mut lower_right) = (0, 0, 0, 0);
 
-    for line in input.lines() {
-        let (mut position, velocity) = parse_line(line);
-
+    for (mut position, velocity) in input.lines().map(parse_line) {
         for _ in 0..100 {
             position = advance(position, velocity, width, height);
         }
@@ -89,6 +87,7 @@ fn part2(input: &str, width: isize, height: isize) -> isize {
 
         let has_repetition = grid.iter().find(|&&v| v > 1).is_some();
         if !has_repetition {
+            print_grid(&grid);
             return i;
         }
 
