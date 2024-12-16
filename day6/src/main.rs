@@ -52,24 +52,17 @@ fn in_a_loop(grid: &mut Grid<u8>, start: Vec2) -> bool {
         }
     }
 
-    let direction_to_bit = |direction: Direction4| match direction {
-        Direction4::Up => 0b1,
-        Direction4::Right => 0b10,
-        Direction4::Down => 0b100,
-        Direction4::Left => 0b1000,
-    };
-
     while !grid.is_out_of_bound(current) {
         direction = turn_right_until_not_facing_wall(&grid, current, direction);
 
         if Direction4::all_directions()
             .iter()
-            .any(|&dir| grid[current] & direction_to_bit(dir) != 0 && direction == dir)
+            .any(|&dir| grid[current] & dir.bit() != 0 && direction == dir)
         {
             return true;
         }
 
-        grid[current] += direction_to_bit(direction);
+        grid[current] += direction.bit();
 
         current += direction.into();
     }

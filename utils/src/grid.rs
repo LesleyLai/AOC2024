@@ -110,6 +110,10 @@ impl<T: Clone + Default> Grid<T> {
         }
     }
 
+    pub fn with_same_shape_as<Q>(grid: &Grid<Q>) -> Grid<T> {
+        Self::new(grid.width, grid.height)
+    }
+
     pub fn from_nested(input: &[Vec<T>]) -> Grid<T> {
         let width = input.first().unwrap().len();
         let height = input.len();

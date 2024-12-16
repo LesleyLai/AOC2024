@@ -37,25 +37,6 @@ AAAAAA";
 
 const INPUT: &str = include_str!("./input.txt");
 
-// fn flood_fill(grid: &Grid<u8>, filled_grid: &mut Grid<isize>, start: Vec2, value: isize) {
-//     filled_grid[start] = value;
-//     for dir in Direction4::all_directions() {
-//         let next = start + Vec2::from(dir);
-//         if grid.get(next) == Some(&grid[start]) && filled_grid[next] < 0 {
-//             flood_fill(grid, filled_grid, next, value);
-//         }
-//     }
-// }
-
-fn dir_bit(dir: Direction4) -> u8 {
-    match dir {
-        Direction4::Up => 1,
-        Direction4::Down => 2,
-        Direction4::Left => 4,
-        Direction4::Right => 8,
-    }
-}
-
 // returns (area, parameter)
 fn flood_fill_calc_parameter(
     grid: &Grid<u8>,
@@ -126,7 +107,7 @@ fn part2(input: &str) -> usize {
         for dir in Direction4::all_directions() {
             let next = coord + Vec2::from(dir);
             if filled_grid.get(next) != Some(&region_id) {
-                sides_grid[coord] += dir_bit(dir);
+                sides_grid[coord] += dir.bit();
             }
         }
     }
@@ -144,15 +125,15 @@ fn part2(input: &str) -> usize {
                 let mut in_down_wall = false;
                 for x in 0..grid.width {
                     if filled_grid[(x, y)] == region_id {
-                        let current_in_up_wall =
-                            (sides_grid[(x, y)] & dir_bit(Direction4::Up)) != 0;
+                        let sides_bits = sides_grid[(x, y)];
+
+                        let current_in_up_wall = (sides_bits & Direction4::Up.bit()) != 0;
                         if !in_up_wall && current_in_up_wall {
                             up_wall_count += 1;
                         }
                         in_up_wall = current_in_up_wall;
 
-                        let current_in_down_wall =
-                            (sides_grid[(x, y)] & dir_bit(Direction4::Down)) != 0;
+                        let current_in_down_wall = (sides_bits & Direction4::Down.bit()) != 0;
                         if !in_down_wall && current_in_down_wall {
                             down_wall_count += 1;
                         }
@@ -173,15 +154,15 @@ fn part2(input: &str) -> usize {
             let mut in_right_wall = false;
             for y in 0..grid.height {
                 if filled_grid[(x, y)] == region_id {
-                    let current_in_left_wall =
-                        (sides_grid[(x, y)] & dir_bit(Direction4::Left)) != 0;
+                    let sides_bits = sides_grid[(x, y)];
+
+                    let current_in_left_wall = (sides_bits & Direction4::Left.bit()) != 0;
                     if !in_left_wall && current_in_left_wall {
                         left_wall_count += 1;
                     }
                     in_left_wall = current_in_left_wall;
 
-                    let current_in_right_wall =
-                        (sides_grid[(x, y)] & dir_bit(Direction4::Right)) != 0;
+                    let current_in_right_wall = (sides_bits & Direction4::Right.bit()) != 0;
 
                     if !in_right_wall && current_in_right_wall {
                         right_wall_count += 1;

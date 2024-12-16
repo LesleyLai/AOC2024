@@ -1,6 +1,6 @@
 use crate::Vec2;
 
-#[derive(Eq, PartialEq, Copy, Clone, Debug)]
+#[derive(Eq, PartialEq, Copy, Clone, Debug, Hash)]
 pub enum Direction4 {
     Up,
     Down,
@@ -9,6 +9,19 @@ pub enum Direction4 {
 }
 
 impl Direction4 {
+    pub fn index(self) -> usize {
+        self as usize
+    }
+
+    pub const fn turn_left(self) -> Direction4 {
+        use Direction4::*;
+        match self {
+            Up => Left,
+            Down => Right,
+            Left => Down,
+            Right => Up,
+        }
+    }
     pub const fn turn_right(self) -> Direction4 {
         use Direction4::*;
         match self {
@@ -19,13 +32,33 @@ impl Direction4 {
         }
     }
 
-    pub const fn all_directions() -> [Direction4; 4] {
-        [
+    pub const fn all_directions() -> &'static [Direction4; 4] {
+        &[
             Direction4::Up,
             Direction4::Right,
             Direction4::Down,
             Direction4::Left,
         ]
+    }
+
+    // Gets a unique bit for each direction (can be used as a bitmask)
+    pub const fn bit(self) -> u8 {
+        match self {
+            Direction4::Up => 1,
+            Direction4::Down => 2,
+            Direction4::Left => 4,
+            Direction4::Right => 8,
+        }
+    }
+
+    // Returns an ascii character that can visualize the character
+    pub const fn ascii(self) -> u8 {
+        match self {
+            Direction4::Up => b'^',
+            Direction4::Down => b'v',
+            Direction4::Left => b'<',
+            Direction4::Right => b'>',
+        }
     }
 }
 
@@ -41,7 +74,7 @@ impl From<Direction4> for Vec2 {
     }
 }
 
-#[derive(Eq, PartialEq, Copy, Clone, Debug)]
+#[derive(Eq, PartialEq, Copy, Clone, Debug, Hash)]
 pub enum Direction8 {
     Up,
     Down,
