@@ -16,14 +16,12 @@ impl<'a> Machine<'a> {
         }
     }
 
-    fn combo_operand(&self) -> isize {
+    fn combo(&self) -> isize {
         let operand = self.instructions[self.ip + 1];
-        if operand < 4 {
-            operand
-        } else if operand < 7 {
-            self.registers[(operand - 4) as usize]
-        } else {
-            unreachable!()
+        match operand {
+            0..=3 => operand,
+            4..=6 => self.registers[(operand - 4) as usize],
+            _ => unreachable!("Invalid operand: {}", operand),
         }
     }
 
@@ -32,13 +30,13 @@ impl<'a> Machine<'a> {
         let mut output = None;
         match self.instructions[self.ip] {
             0 => {
-                self.registers[0] = self.registers[0] >> self.combo_operand();
+                self.registers[0] >>= self.combo();
             }
             1 => {
                 self.registers[1] ^= self.instructions[self.ip + 1];
             }
             2 => {
-                self.registers[1] = self.combo_operand() % 8;
+                self.registers[1] = self.combo() % 8;
             }
             3 => {
                 if self.registers[0] != 0 {
@@ -50,13 +48,13 @@ impl<'a> Machine<'a> {
                 self.registers[1] ^= self.registers[2];
             }
             5 => {
-                output = Some(self.combo_operand() % 8);
+                output = Some(self.combo() % 8);
             }
             6 => {
-                self.registers[1] = self.registers[0] >> self.combo_operand();
+                self.registers[1] = self.registers[0] >> self.combo();
             }
             7 => {
-                self.registers[2] = self.registers[0] >> self.combo_operand();
+                self.registers[2] = self.registers[0] >> self.combo();
             }
             _ => unreachable!(),
         }
@@ -69,7 +67,6 @@ fn part1(registers: [isize; 3], instructions: &[isize]) -> Vec<isize> {
     let mut outputs = Vec::new();
 
     let mut machine = Machine::new(registers, instructions);
-
     while machine.ip < instructions.len() - 1 {
         if let Some(output) = machine.step() {
             outputs.push(output);
@@ -77,28 +74,6 @@ fn part1(registers: [isize; 3], instructions: &[isize]) -> Vec<isize> {
     }
     outputs
 }
-
-// fn assert_assumptions(instructions: &[isize]) {
-//     assert!(instructions.len() >= 4);
-//
-//     // We only deal with the situation of a single jump that jump back to beginning
-//     for i in (0..instructions.len() - 2).step_by(2) {
-//         assert_ne!(instructions[i], 3); // No jump instruction
-//     }
-//     assert_eq!(instructions[instructions.len() - 2], 3); // jump at end
-//     assert_eq!(instructions[instructions.len() - 1], 0); // jump back to beginning
-//
-//     // Only Single out instruction in a loop that output a register value
-//     let mut has_out_instr = false;
-//     for i in (0..instructions.len() - 2).step_by(2) {
-//         if instructions[i] == 5 {
-//             assert!(!has_out_instr);
-//             has_out_instr = true;
-//             assert!(instructions[i + 1] >= 4);
-//             assert!(instructions[i + 1] < 7);
-//         }
-//     }
-// }
 
 fn test(mut a: isize) -> Vec<isize> {
     let mut result = vec![];
@@ -169,7 +144,6 @@ fn input_program_inverse_step(a_after: isize, b_after: isize) -> Vec<isize> {
 }
 
 fn input_program_inverse_run(instructions: &[isize]) -> isize {
-    // potential a s
     let mut candidates = vec![0];
 
     for &instruction in instructions.iter().rev() {
@@ -183,27 +157,75 @@ fn input_program_inverse_run(instructions: &[isize]) -> isize {
     *candidates.iter().min().unwrap()
 }
 
-// fn part2(instructions: &[isize]) {
-//     assert_assumptions(instructions);
-//
-//     let mut output_register = None;
-//     for i in (0..instructions.len() - 2).step_by(2) {
-//         if instructions[i] == 5 {
-//             output_register = Some(usize::try_from(instructions[i + 1] - 4).unwrap());
-//         }
-//     }
-//     let output_register = output_register.unwrap();
-//
-//     println!("output_register: {}", output_register);
-//
-//     // a most be 0 at the end
-//
-//     //
-//     let mut ip = instructions.len() - 4;
-//     for output in instructions.iter().rev() {
-//         println!("output: {}", output);
-//     }
-// }
+fn assert_assumptions(instructions: &[isize]) {
+    assert!(instructions.len() >= 6);
+
+    // My assumptions to the input
+    // There's only one instruction changes a into a >> 3
+    // There’s a single jump at the end, which loops back to the beginning.
+    // There is only one output instruction, which appears just before the jump at the end of the loop.
+    // The states of b and c are irrelevant (they act like local variables within the loop). (untested)
+
+    let mut meet_adv = false;
+    for i in (0..instructions.len() - 4).step_by(2) {
+        let instruction = instructions[i];
+
+        assert_ne!(instruction, 3); // Not jump
+        assert_ne!(instruction, 5); // Not out
+
+        // a >>= 3
+        if instruction == 0 {
+            assert_eq!(instructions[i + 1], 3);
+            assert!(!meet_adv);
+            meet_adv = true;
+        }
+    }
+
+    // single output instruction that output a register
+    assert_eq!(instructions[instructions.len() - 4], 5);
+    assert!(matches!(instructions[instructions.len() - 3], 4..6));
+
+    // single loop instruction that jump back to beginning
+    assert_eq!(instructions[instructions.len() - 2], 3);
+    assert_eq!(instructions[instructions.len() - 1], 0);
+}
+
+// Gets all possible values of a
+fn part2_inverse_step(
+    a_after: isize,
+    output: isize,
+    instructions: &[isize],
+) -> impl Iterator<Item = isize> + use<'_> {
+    let a_before_min = a_after << 3;
+    (a_before_min..(a_before_min + 8)).filter(move |&a| {
+        let mut machine = Machine::new([a, 0, 0], instructions);
+        while machine.ip < instructions.len() - 4 {
+            machine.step();
+        }
+        let actual_output = machine.step().unwrap();
+        let actual_a_after = machine.registers[0];
+
+        (actual_a_after, actual_output) == (a_after, output)
+    })
+}
+
+// A hopefully generic solution
+fn part2(instructions: &[isize]) -> isize {
+    assert_assumptions(instructions);
+
+    // all potential a
+    let mut candidates = vec![0];
+
+    for &instruction in instructions.iter().rev() {
+        let mut next_candidates = vec![];
+        for &candidate_a in &candidates {
+            next_candidates.extend(part2_inverse_step(candidate_a, instruction, instructions));
+        }
+        candidates = next_candidates;
+    }
+
+    *candidates.iter().min().unwrap()
+}
 
 #[allow(dead_code)]
 fn part2_brute(instructions: &[isize]) {
@@ -237,17 +259,23 @@ fn main() {
         [0, 3, 5, 4, 3, 0]
     );
 
+    const TEST_INSTRUCTIONS: &[isize] = &[0, 3, 5, 4, 3, 0];
+
     // part 2
     // hardcoded test-case as rust code
     assert_eq!(test(2024), [5, 7, 3, 0]);
-    assert_eq!(test(117440), [0, 3, 5, 4, 3, 0]);
-    assert_eq!(test_inverse_run(&[0, 3, 5, 4, 3, 0]), 117440);
+    assert_eq!(test(117440), TEST_INSTRUCTIONS);
+    assert_eq!(test_inverse_run(TEST_INSTRUCTIONS), 117440);
 
     // hardcoded my input as rust code
     assert_eq!(input_program(55593699), [6, 0, 6, 3, 0, 2, 3, 1, 6]);
-
+    assert_eq!(input_program(236539226447469), INPUT_INSTRUCTIONS);
     assert_eq!(
         input_program_inverse_run(INPUT_INSTRUCTIONS),
         236539226447469
     );
+
+    // generic solution
+    assert_eq!(part2(TEST_INSTRUCTIONS), 117440);
+    assert_eq!(part2(INPUT_INSTRUCTIONS), 236539226447469);
 }
