@@ -46,6 +46,14 @@ struct State {
 }
 
 impl State {
+    fn new(cost: isize, location: Vec2, direction: Direction4) -> Self {
+        State {
+            cost,
+            location,
+            direction,
+        }
+    }
+
     fn start(location: Vec2) -> Self {
         Self {
             cost: 0,
@@ -87,30 +95,20 @@ fn print_state(state: &State, grid: &Grid<u8>) {
 fn neighbors(state: State, grid: &Grid<u8>) -> impl Iterator<Item = State> + use<'_> {
     use std::iter::once_with;
 
-    let get_neighbor = |location, new_dir, cost| {
+    let State {
+        cost,
+        location,
+        direction,
+    } = state;
+
+    let get_neighbor = move |new_dir, new_cost| {
         let new_dest = location + Vec2::from(new_dir);
-        (grid[new_dest] == b'.').then_some(State {
-            cost: cost,
-            location: new_dest,
-            direction: new_dir,
-        })
+        (grid[new_dest] == b'.').then_some(State::new(new_cost, new_dest, new_dir))
     };
 
-    let forward = once_with(move || get_neighbor(state.location, state.direction, state.cost + 1));
-    let left = once_with(move || {
-        get_neighbor(
-            state.location,
-            state.direction.turn_left(),
-            state.cost + 1001,
-        )
-    });
-    let right = once_with(move || {
-        get_neighbor(
-            state.location,
-            state.direction.turn_right(),
-            state.cost + 1001,
-        )
-    });
+    let forward = once_with(move || get_neighbor(direction, cost + 1));
+    let left = once_with(move || get_neighbor(direction.turn_left(), cost + 1001));
+    let right = once_with(move || get_neighbor(direction.turn_right(), cost + 1001));
 
     forward.chain(left).chain(right).filter_map(|s| s)
 }
@@ -140,15 +138,17 @@ struct DijkstraResult {
 }
 
 fn dijkstra(world_state: &WorldState) -> DijkstraResult {
+    let WorldState { start, end, grid } = world_state;
+
     let mut priority_queue: BinaryHeap<State> = BinaryHeap::new();
+    priority_queue.push(State::start(*start));
 
-    let mut visited: Grid<u8> = Grid::with_same_shape_as(&world_state.grid);
+    let mut in_from_out: Grid<OutToInMapping> = Grid::with_same_shape_as(&grid);
 
-    priority_queue.push(State::start(world_state.start));
+    // Conceptually a HashMap<(Vec2, Direction4), isize>
+    let mut cost_map: Grid<[isize; 4]> = Grid::with_value(grid.width, grid.height, [isize::MAX; 4]);
+    let get_end_cost = |cost_map: &Grid<[isize; 4]>| *cost_map[*end].iter().min().unwrap();
 
-    let mut in_from_out: Grid<OutToInMapping> = Grid::with_same_shape_as(&world_state.grid);
-
-    let mut best_cost = None;
     while let Some(state) = priority_queue.pop() {
         let State {
             cost,
@@ -156,29 +156,31 @@ fn dijkstra(world_state: &WorldState) -> DijkstraResult {
             direction,
         } = state;
 
-        if best_cost.is_some_and(|best_cost| cost > best_cost) {
+        if cost > get_end_cost(&cost_map) {
             break;
         }
 
-        if visited[location] & direction.bit() != 0 {
+        let old_cost = &mut cost_map[location][direction.index()];
+        if cost > *old_cost {
             continue;
         }
-        visited[location] += direction.bit();
+        *old_cost = cost;
 
-        if location == world_state.end {
-            best_cost = Some(cost);
+        if location == *end {
             continue;
         }
 
-        for neighbor in neighbors(state, &world_state.grid) {
-            in_from_out[location].insert(neighbor.direction, direction);
-            priority_queue.push(neighbor);
+        for neighbor in neighbors(state, &grid) {
+            if neighbor.cost < cost_map[neighbor.location][neighbor.direction.index()] {
+                in_from_out[location].insert(neighbor.direction, direction);
+                priority_queue.push(neighbor);
+            }
         }
     }
 
     DijkstraResult {
         in_from_out,
-        best_cost: best_cost.unwrap(),
+        best_cost: get_end_cost(&cost_map),
     }
 }
 
@@ -205,7 +207,7 @@ fn count_tiles_on_best_paths(
         }
     }
 
-    while let Some((location, going_out_dir)) = stack.pop() {
+    while let Some((location, &going_out_dir)) = stack.pop() {
         if on_best_paths[location] {
             continue;
         }
@@ -215,12 +217,12 @@ fn count_tiles_on_best_paths(
             continue;
         }
 
-        for going_in_dir in in_from_out[location].lookup(*going_out_dir) {
+        for going_in_dir in in_from_out[location].lookup(going_out_dir) {
             stack.push((location - Vec2::from(*going_in_dir), going_in_dir));
         }
     }
 
-    on_best_paths.iter().filter(|b| **b).count()
+    on_best_paths.iter().filter(|&&b| b).count()
 }
 
 // Mapping from move-out direction to (multiple) move-in direction
@@ -232,12 +234,8 @@ struct OutToInMapping {
 }
 
 impl OutToInMapping {
-    fn new() -> Self {
-        Self { data: [0; 4] }
-    }
-
     fn insert(&mut self, out_dir: Direction4, in_dir: Direction4) {
-        self.data[out_dir.index()] += in_dir.bit();
+        self.data[out_dir.index()] |= in_dir.bit();
     }
 
     fn has_value(&self, out_dir: Direction4) -> bool {
