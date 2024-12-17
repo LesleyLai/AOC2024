@@ -1,56 +1,81 @@
 const INPUT_REGISTERS: [isize; 3] = [55593699, 0, 0];
 const INPUT_INSTRUCTIONS: &[isize] = &[2, 4, 1, 3, 7, 5, 0, 3, 1, 5, 4, 4, 5, 5, 3, 0];
 
-fn combo_operand_value(ip: usize, instructions: &[isize], registers: [isize; 3]) -> isize {
-    let operand = instructions[ip + 1];
-    if operand < 4 {
-        operand as isize
-    } else if operand < 7 {
-        registers[(operand - 4) as usize]
-    } else {
-        unreachable!()
-    }
+struct Machine<'a> {
+    ip: usize,
+    registers: [isize; 3],
+    instructions: &'a [isize],
 }
 
-fn part1(mut registers: [isize; 3], instructions: &[isize]) -> Vec<isize> {
-    let mut output = Vec::new();
+impl<'a> Machine<'a> {
+    fn new(registers: [isize; 3], instructions: &'a [isize]) -> Self {
+        Self {
+            ip: 0,
+            registers,
+            instructions,
+        }
+    }
 
-    let mut ip = 0;
+    fn combo_operand(&self) -> isize {
+        let operand = self.instructions[self.ip + 1];
+        if operand < 4 {
+            operand
+        } else if operand < 7 {
+            self.registers[(operand - 4) as usize]
+        } else {
+            unreachable!()
+        }
+    }
 
-    while ip < instructions.len() - 1 {
-        match instructions[ip] {
+    // return true if need continue
+    fn step(&mut self) -> Option<isize> {
+        let mut output = None;
+        match self.instructions[self.ip] {
             0 => {
-                registers[0] = registers[0] >> combo_operand_value(ip, instructions, registers);
+                self.registers[0] = self.registers[0] >> self.combo_operand();
             }
             1 => {
-                registers[1] ^= instructions[ip + 1] as isize;
+                self.registers[1] ^= self.instructions[self.ip + 1];
             }
             2 => {
-                registers[1] = combo_operand_value(ip, instructions, registers) % 8;
+                self.registers[1] = self.combo_operand() % 8;
             }
             3 => {
-                if registers[0] != 0 {
-                    ip = instructions[ip + 1] as usize;
-                    continue;
+                if self.registers[0] != 0 {
+                    self.ip = self.instructions[self.ip + 1] as usize;
+                    return None;
                 }
             }
             4 => {
-                registers[1] ^= registers[2];
+                self.registers[1] ^= self.registers[2];
             }
             5 => {
-                output.push(combo_operand_value(ip, instructions, registers) % 8);
+                output = Some(self.combo_operand() % 8);
             }
             6 => {
-                registers[1] = registers[0] >> combo_operand_value(ip, instructions, registers);
+                self.registers[1] = self.registers[0] >> self.combo_operand();
             }
             7 => {
-                registers[2] = registers[0] >> combo_operand_value(ip, instructions, registers);
+                self.registers[2] = self.registers[0] >> self.combo_operand();
             }
             _ => unreachable!(),
         }
-        ip += 2;
+        self.ip += 2;
+        output
     }
-    output
+}
+
+fn part1(registers: [isize; 3], instructions: &[isize]) -> Vec<isize> {
+    let mut outputs = Vec::new();
+
+    let mut machine = Machine::new(registers, instructions);
+
+    while machine.ip < instructions.len() - 1 {
+        if let Some(output) = machine.step() {
+            outputs.push(output);
+        }
+    }
+    outputs
 }
 
 // fn assert_assumptions(instructions: &[isize]) {
