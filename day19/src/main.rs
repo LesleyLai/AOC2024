@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 const TEST_INPUT: &str = "r, wr, b, g, bwu, rb, gb, br
 
@@ -13,38 +13,22 @@ bbrgwb";
 
 const INPUT: &str = include_str!("./input.txt");
 
-fn possible<'a>(design: &'a str, patterns: &[&str], memo_table: &mut HashSet<&'a str>) -> bool {
-    if design.is_empty() {
-        return true;
-    }
-
-    if memo_table.contains(design) {
-        return false;
-    }
-
-    let result = patterns.iter().any(|p| {
-        design.starts_with(p) && possible(design.strip_prefix(p).unwrap(), patterns, memo_table)
-    });
-
-    if !result {
-        memo_table.insert(design);
-    }
-
-    result
-}
-
-fn part1(input: &str) -> usize {
+fn parse_input(input: &str) -> (Vec<&str>, Vec<&str>) {
     let mut lines = input.lines();
-    let available_patterns: Vec<_> = lines.next().unwrap().split(", ").collect();
+    let patterns: Vec<_> = lines.next().unwrap().split(", ").collect();
 
     lines.next();
     let designs: Vec<_> = lines.collect();
+    (patterns, designs)
+}
 
-    let mut memo_table: HashSet<&str> = HashSet::new();
+fn part1(input: &str) -> usize {
+    let (patterns, designs) = parse_input(input);
+    let mut memo_table = HashMap::new();
 
     designs
         .iter()
-        .filter(|design| possible(design, &available_patterns, &mut memo_table))
+        .filter(|design| combinations(design, &patterns, &mut memo_table) > 0)
         .count()
 }
 
@@ -61,30 +45,23 @@ fn combinations<'a>(
         return result;
     }
 
-    let mut result = 0;
-    for &pattern in patterns {
-        if design.starts_with(pattern) {
-            result += combinations(design.strip_prefix(pattern).unwrap(), patterns, memo_table);
-        }
-    }
+    let result = patterns
+        .iter()
+        .filter(|&p| design.starts_with(p))
+        .map(|p| combinations(design.strip_prefix(p).unwrap(), patterns, memo_table))
+        .sum();
 
     memo_table.insert(design, result);
-
     result
 }
 
 fn part2(input: &str) -> usize {
-    let mut lines = input.lines();
-    let available_patterns: Vec<_> = lines.next().unwrap().split(", ").collect();
-
-    lines.next();
-    let designs: Vec<_> = lines.collect();
-
-    let mut memo_table: HashMap<&str, usize> = HashMap::new();
+    let (patterns, designs) = parse_input(input);
+    let mut memo_table = HashMap::new();
 
     designs
         .iter()
-        .map(|&design| combinations(design, &available_patterns, &mut memo_table))
+        .map(|&design| combinations(design, &patterns, &mut memo_table))
         .sum()
 }
 
