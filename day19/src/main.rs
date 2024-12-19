@@ -13,6 +13,15 @@ bbrgwb";
 
 const INPUT: &str = include_str!("./input.txt");
 
+fn parse_input(input: &str) -> (Vec<&str>, Vec<&str>) {
+    let mut lines = input.lines();
+    let patterns: Vec<_> = lines.next().unwrap().split(", ").collect();
+
+    lines.next();
+    let designs: Vec<_> = lines.collect();
+    (patterns, designs)
+}
+
 fn possible<'a>(design: &'a str, patterns: &[&str], memo_table: &mut HashSet<&'a str>) -> bool {
     if design.is_empty() {
         return true;
@@ -34,17 +43,12 @@ fn possible<'a>(design: &'a str, patterns: &[&str], memo_table: &mut HashSet<&'a
 }
 
 fn part1(input: &str) -> usize {
-    let mut lines = input.lines();
-    let available_patterns: Vec<_> = lines.next().unwrap().split(", ").collect();
-
-    lines.next();
-    let designs: Vec<_> = lines.collect();
-
+    let (patterns, designs) = parse_input(input);
     let mut memo_table: HashSet<&str> = HashSet::new();
 
     designs
         .iter()
-        .filter(|design| possible(design, &available_patterns, &mut memo_table))
+        .filter(|design| possible(design, &patterns, &mut memo_table))
         .count()
 }
 
@@ -61,12 +65,11 @@ fn combinations<'a>(
         return result;
     }
 
-    let mut result = 0;
-    for &pattern in patterns {
-        if design.starts_with(pattern) {
-            result += combinations(design.strip_prefix(pattern).unwrap(), patterns, memo_table);
-        }
-    }
+    let result = patterns
+        .iter()
+        .filter(|&p| design.starts_with(p))
+        .map(|p| combinations(design.strip_prefix(p).unwrap(), patterns, memo_table))
+        .sum();
 
     memo_table.insert(design, result);
 
@@ -74,17 +77,12 @@ fn combinations<'a>(
 }
 
 fn part2(input: &str) -> usize {
-    let mut lines = input.lines();
-    let available_patterns: Vec<_> = lines.next().unwrap().split(", ").collect();
-
-    lines.next();
-    let designs: Vec<_> = lines.collect();
-
+    let (patterns, designs) = parse_input(input);
     let mut memo_table: HashMap<&str, usize> = HashMap::new();
 
     designs
         .iter()
-        .map(|&design| combinations(design, &available_patterns, &mut memo_table))
+        .map(|&design| combinations(design, &patterns, &mut memo_table))
         .sum()
 }
 
