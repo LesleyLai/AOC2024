@@ -35,9 +35,9 @@ fn find_all_trails<const DEDUPLICATE_SAME_DEST: bool>(grid: &Grid<u8>, start: Ve
         if grid[current] == 9 {
             result += 1;
         } else {
-            Direction4::all_directions()
-                .iter()
-                .map(|&dir| current + Vec2::from(dir))
+            current
+                .all_4_neighbors()
+                .into_iter()
                 .filter(|&next| grid.get(next).is_some_and(|val| *val == grid[current] + 1))
                 .for_each(|next| stack.push(next))
         }

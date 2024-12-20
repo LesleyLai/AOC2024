@@ -41,6 +41,10 @@ impl Direction4 {
         ]
     }
 
+    pub fn all_4_neighbors(coord: Vec2) -> [Vec2; 4] {
+        Direction4::all_directions().map(|dir| coord + Vec2::from(dir))
+    }
+
     // Gets a unique bit for each direction (can be used as a bitmask)
     pub const fn bit(self) -> u8 {
         match self {

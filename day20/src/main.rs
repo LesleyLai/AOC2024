@@ -1,5 +1,5 @@
 use std::collections::VecDeque;
-use utils::{Direction4, Grid, Vec2};
+use utils::{Grid, Vec2};
 
 #[allow(dead_code)]
 const TEST_INPUT: &str = "###############
@@ -40,8 +40,7 @@ fn compute_cost_from(grid: &Grid<u8>, start: Vec2) -> Grid<isize> {
         }
         cost_grid[coord] = cost;
 
-        for &dir in Direction4::all_directions() {
-            let next = coord + Vec2::from(dir);
+        for next in coord.all_4_neighbors() {
             if grid.get(next) == Some(&b'.') {
                 queue.push_back((next, cost + 1));
             }

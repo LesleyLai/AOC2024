@@ -48,8 +48,7 @@ fn flood_fill_calc_parameter(
     let mut area = 1;
 
     filled_grid[start] = value;
-    for dir in Direction4::all_directions() {
-        let next = start + Vec2::from(dir);
+    for next in start.all_4_neighbors() {
         if grid.get(next) == Some(&grid[start]) && filled_grid[next] < 0 {
             let (next_area, next_parameter) =
                 flood_fill_calc_parameter(grid, filled_grid, next, value);
@@ -104,7 +103,7 @@ fn part2(input: &str) -> usize {
 
     let mut sides_grid: Grid<u8> = Grid::new(grid.width, grid.height);
     for (coord, &region_id) in filled_grid.enumerate() {
-        for dir in Direction4::all_directions() {
+        for &dir in Direction4::all_directions() {
             let next = coord + Vec2::from(dir);
             if filled_grid.get(next) != Some(&region_id) {
                 sides_grid[coord] += dir.bit();

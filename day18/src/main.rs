@@ -52,8 +52,7 @@ fn bfs(grid: &Grid<u8>, visited: &mut Grid<bool>) -> Option<usize> {
         }
         visited[coord] = true;
 
-        for &dir in Direction4::all_directions() {
-            let next = coord + Vec2::from(dir);
+        for next in coord.all_4_neighbors() {
             if grid.get(next) == Some(&b'.') && !visited[next] {
                 queue.push_back((next, cost + 1));
             }

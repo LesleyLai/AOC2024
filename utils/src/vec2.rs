@@ -1,3 +1,4 @@
+use crate::Direction4;
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
 
@@ -10,6 +11,10 @@ pub struct Vec2 {
 impl Vec2 {
     pub const fn new(x: isize, y: isize) -> Self {
         Self { x, y }
+    }
+
+    pub fn all_4_neighbors(self) -> [Self; 4] {
+        Direction4::all_directions().map(|dir| self + Vec2::from(dir))
     }
 }
 
