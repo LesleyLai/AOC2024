@@ -59,49 +59,37 @@ fn cheat_candidates(cheat_seconds: isize) -> impl Iterator<Item = Vec2> {
 
 fn solve(
     grid: &Grid<u8>,
-    cost_from_start: &Grid<isize>,
     cost_to_end: &Grid<isize>,
     cheat_seconds: isize,
     min_cheat_save: isize,
 ) -> usize {
-    let mut good_cheat_count = 0;
+    let is_good_cheat = |coord, cheat: Vec2| {
+        let after_cheat_coord = coord + Vec2::from(cheat);
 
-    let coords = grid
-        .enumerate()
-        .filter(|(_, &elem)| elem == b'.')
-        .map(|(coord, _)| coord);
-
-    for coord in coords {
-        for cheat in cheat_candidates(cheat_seconds) {
-            let after_cheat_coord = coord + Vec2::from(cheat);
-            if grid.get(after_cheat_coord) != Some(&b'.') {
-                continue;
-            }
-            let non_cheat_cost = cost_from_start[coord] + cost_to_end[coord];
-            let cheat_cost = cheat.x.abs()
-                + cheat.y.abs()
-                + cost_from_start[coord]
-                + cost_to_end[after_cheat_coord];
-
-            if non_cheat_cost - cheat_cost >= min_cheat_save {
-                good_cheat_count += 1;
-            }
+        if grid.get(after_cheat_coord) != Some(&b'.') {
+            return false;
         }
-    }
 
-    good_cheat_count
+        let non_cheat_cost = cost_to_end[coord];
+        let cheat_cost = cheat.x.abs() + cheat.y.abs() + cost_to_end[after_cheat_coord];
+        non_cheat_cost - cheat_cost >= min_cheat_save
+    };
+
+    grid.enumerate()
+        .filter_map(|(coord, &elem)| (elem == b'.').then(|| coord))
+        .fold(0, |acc, coord| {
+            acc + cheat_candidates(cheat_seconds)
+                .filter(|&cheat| is_good_cheat(coord, cheat))
+                .count()
+        })
 }
 
 fn main() {
-    let (grid, start, end) = parse_input(INPUT);
+    let (grid, _start, end) = parse_input(INPUT);
 
-    let cost_from_start = compute_cost_from(&grid, start);
+    //let cost_from_start = compute_cost_from(&grid, start);
     let cost_to_end = compute_cost_from(&grid, end);
 
-    assert_eq!(solve(&grid, &cost_from_start, &cost_to_end, 2, 100), 1426);
-
-    assert_eq!(
-        solve(&grid, &cost_from_start, &cost_to_end, 20, 100),
-        1000697
-    );
+    assert_eq!(solve(&grid, &cost_to_end, 2, 100), 1426);
+    assert_eq!(solve(&grid, &cost_to_end, 20, 100), 1000697);
 }
