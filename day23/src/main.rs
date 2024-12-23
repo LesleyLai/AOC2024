@@ -1,5 +1,4 @@
 use itertools::Itertools;
-use std::process::exit;
 use std::{
     collections::{HashMap, HashSet},
     iter::once,
@@ -72,6 +71,12 @@ impl<'a> Graph<'a> {
     fn is_connected_to(&self, node1: &str, node2: &str) -> bool {
         self.data[node1].contains(node2)
     }
+
+    fn edges(&self) -> impl '_ + Iterator<Item = (&'a str, &'a str)> {
+        self.data
+            .iter()
+            .flat_map(|(s, e)| e.iter().map(move |e| (*s, *e)))
+    }
 }
 
 fn parse_input(input: &str) -> Graph {
@@ -84,14 +89,12 @@ fn parse_input(input: &str) -> Graph {
 
 fn part1(graph: &Graph) -> usize {
     let mut three_connected: HashSet<[&str; 3]> = HashSet::new();
-    for node in graph.nodes() {
-        for neighbor in graph.neighbors(node) {
-            for neighbors_neighbor in graph.neighbors(neighbor) {
-                if graph.is_connected_to(node, neighbors_neighbor) {
-                    let mut array = [node, neighbor, neighbors_neighbor];
-                    array.sort();
-                    three_connected.insert(array);
-                }
+    for (node, node2) in graph.edges() {
+        for node3 in graph.neighbors(node2) {
+            if graph.is_connected_to(node, node3) {
+                let mut array = [node, node2, node3];
+                array.sort();
+                three_connected.insert(array);
             }
         }
     }
@@ -114,7 +117,7 @@ fn part2(graph: &Graph) -> String {
             let neighbors_with_self = once(node).chain(graph.neighbors(node));
 
             for mut combination in neighbors_with_self.combinations(i) {
-                let mut all_neighbor = combination
+                let all_neighbor = combination
                     .iter()
                     .tuple_combinations()
                     .all(|(a, b)| graph.is_connected_to(a, b));
