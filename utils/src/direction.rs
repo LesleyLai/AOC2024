@@ -1,6 +1,6 @@
 use crate::Vec2;
 
-#[derive(Eq, PartialEq, Copy, Clone, Debug, Hash)]
+#[derive(Eq, PartialEq, Copy, Clone, Debug, Hash, PartialOrd, Ord)]
 pub enum Direction4 {
     Up,
     Down,
