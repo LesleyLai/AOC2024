@@ -1,21 +1,15 @@
-use itertools::Itertools;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::collections::HashSet;
+use rayon::prelude::ParallelSlice;
+use std::collections::{HashMap, HashSet};
 use std::iter::Successors;
 use std::time::Instant;
 
 const INPUT: &str = include_str!("./input.txt");
 
 fn next_number(mut seed: isize) -> isize {
-    seed ^= seed * 64;
-    seed %= 16777216;
-
-    seed ^= seed >> 5;
-    seed %= 16777216;
-
-    seed ^= seed * 2048;
-    seed %= 16777216;
-
+    seed ^= (seed << 6) & ((1 << 24) - 1);
+    seed ^= (seed >> 5) & ((1 << 24) - 1);
+    seed ^= (seed << 11) & ((1 << 24) - 1);
     seed
 }
 
@@ -30,38 +24,45 @@ fn part1(input: &[isize]) -> isize {
         .sum()
 }
 
-fn find_sell_price(seed: isize, sequence: (isize, isize, isize, isize)) -> Option<isize> {
-    let prices = rand(seed).map(|seed| seed % 10).take(2000);
-    let price_diff = prices.clone().tuple_windows().map(|(a, b)| b - a);
-    price_diff
-        .tuple_windows()
-        .zip(prices.skip(4))
-        .find(|((a, b, c, d), _)| (*a, *b, *c, *d) == sequence)
-        .map(|(_, price)| price)
-}
+fn generate_prices_from_sequence_map(
+    seed: isize,
+    potential_sequences: &mut HashSet<[isize; 4]>,
+) -> HashMap<[isize; 4], isize> {
+    let prices: Vec<_> = rand(seed).map(|seed| seed % 10).take(2000).collect();
+    let price_diff: Vec<_> = prices.par_windows(2).map(|w| w[1] - w[0]).collect();
 
-fn find_total_price(input: &[isize], sequence: (isize, isize, isize, isize)) -> isize {
-    input
-        .iter()
-        .filter_map(|&seed| find_sell_price(seed, sequence))
-        .sum()
+    let mut map = HashMap::new();
+
+    for i in 0..(prices.len() - 4) {
+        let sequence: [isize; 4] = price_diff[i..i + 4].try_into().unwrap();
+        potential_sequences.insert(sequence);
+        if !map.contains_key(&sequence) {
+            map.insert(sequence, prices[i + 4]);
+        }
+    }
+
+    map
 }
 
 fn part2(input: &[isize]) -> isize {
-    let mut sequence_candidates = HashSet::new();
-    for &seed in input {
-        let prices = rand(seed).map(|seed| seed % 10).take(2000);
-        let price_diff = prices.tuple_windows().map(|(a, b)| b - a);
-        sequence_candidates.extend(price_diff.tuple_windows::<(_, _, _, _)>())
-    }
-    let sequence_candidates: Vec<_> = sequence_candidates.iter().collect();
+    let mut potential_sequences = HashSet::new();
+    let prices_from_sequence: Vec<_> = input
+        .iter()
+        .map(|seed| generate_prices_from_sequence_map(*seed, &mut potential_sequences))
+        .collect();
 
-    let best_sequence = sequence_candidates
+    let max_sum = potential_sequences
         .par_iter()
-        .max_by_key(|sequence| find_total_price(input, ***sequence))
+        .map(move |sequence| {
+            prices_from_sequence
+                .par_iter()
+                .map(|price_from_sequence| price_from_sequence.get(sequence).unwrap_or(&0))
+                .sum()
+        })
+        .max()
         .unwrap();
 
-    find_total_price(input, **best_sequence)
+    max_sum
 }
 
 fn main() {
