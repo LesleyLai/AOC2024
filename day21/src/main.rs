@@ -1,5 +1,6 @@
 extern crate core;
 
+use std::time::Instant;
 use utils::{next_permutation, Direction4, Grid, Vec2};
 
 const TEST_INPUT: &str = "029A
@@ -120,10 +121,10 @@ fn shortest_sequence(
 }
 
 fn part1(input: &str) -> usize {
+    let now = Instant::now();
+
     let keypad_grid = Grid::from_text("789\n456\n123\n#0A");
     let directional_grid = Grid::from_text("#^A\n<v>");
-
-    let res = shortest_sequence(&keypad_grid, &directional_grid, b"980A");
 
     let mut result = 0;
     for line in input.lines() {
@@ -131,6 +132,8 @@ fn part1(input: &str) -> usize {
         let num: usize = num.parse().unwrap();
         result += num * shortest_sequence(&keypad_grid, &directional_grid, line.as_bytes());
     }
+
+    println!("Part 1: {}s", now.elapsed().as_secs_f64());
 
     result
 }
